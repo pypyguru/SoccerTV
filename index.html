@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soccer Schedule - Live Streams</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .event-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+
+        .event-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            border-left-color: #10b981;
+        }
+
+        .event-card.expanded {
+            border-left-color: #3b82f6;
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
+        }
+
+        .channel-btn {
+            transition: all 0.2s ease;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .channel-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .channel-btn.secondary {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        }
+
+        .channel-btn.secondary:hover {
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .time-badge {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .live-badge {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            animation: pulse 2s infinite;
+        }
+
+        .day-btn {
+            transition: all 0.3s ease;
+        }
+
+        .day-btn.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .search-container {
+            position: relative;
+        }
+
+        .search-container::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 12px;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E") no-repeat center;
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide-down {
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                max-height: 0;
+            }
+
+            to {
+                opacity: 1;
+                max-height: 200px;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-futbol text-3xl"></i>
+                    <div>
+                        <h1 class="text-2xl font-bold">Soccer Schedule</h1>
+                        <p class="text-blue-100 text-sm">Live Sports Streaming</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="refreshBtn"
+                        class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors">
+                        <i class="fas fa-sync-alt mr-2"></i>Refresh
+                    </button>
+                    <div class="text-right text-sm">
+                        <div id="currentTime" class="font-medium"></div>
+                        <div class="text-blue-100">UK GMT</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Controls -->
+        <div class="mb-8">
+            <div class="flex flex-col lg:flex-row gap-4 items-center justify-between">
+                <!-- Day Selection -->
+                <div id="daySelector" class="flex bg-white rounded-lg shadow-md p-1">
+                    <!-- Dynamic day buttons will be inserted here -->
+                </div>
+
+                <!-- Search and Filters -->
+                <div class="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+                    <div class="search-container">
+                        <input type="text" id="searchInput" placeholder="Search teams, leagues..."
+                            class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64" />
+                    </div>
+                    <select id="leagueFilter"
+                        class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">All Leagues</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="flex justify-center items-center py-16">
+            <div class="text-center">
+                <div class="loading-spinner mx-auto mb-4"></div>
+                <p class="text-gray-600">Loading schedule...</p>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-4"></i>
+            <h3 class="text-lg font-semibold text-red-800 mb-2">Failed to Load Schedule</h3>
+            <p class="text-red-600 mb-4">Unable to fetch the latest soccer schedule. Please try again.</p>
+            <button id="retryBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors">
+                <i class="fas fa-redo mr-2"></i>Retry
+            </button>
+        </div>
+
+        <!-- Schedule Content -->
+        <div id="scheduleContent" class="hidden">
+            <!-- Stats Bar -->
+            <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                    <div class="bg-blue-50 rounded-lg p-3">
+                        <div class="text-2xl font-bold text-blue-600" id="totalEvents">0</div>
+                        <div class="text-sm text-gray-600">Total Events</div>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-3">
+                        <div class="text-2xl font-bold text-green-600" id="liveEvents">0</div>
+                        <div class="text-sm text-gray-600">Live Now</div>
+                    </div>
+                    <div class="bg-purple-50 rounded-lg p-3">
+                        <div class="text-2xl font-bold text-purple-600" id="totalChannels">0</div>
+                        <div class="text-sm text-gray-600">Available Channels</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Events List -->
+            <div id="eventsList" class="space-y-4">
+                <!-- Events will be populated here -->
+            </div>
+
+            <!-- No Results -->
+            <div id="noResults" class="hidden text-center py-16">
+                <i class="fas fa-search text-gray-300 text-6xl mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-600 mb-2">No matches found</h3>
+                <p class="text-gray-500">Try adjusting your search or filter criteria</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8 mt-16">
+        <div class="container mx-auto px-4 text-center">
+            <div class="flex items-center justify-center space-x-2 mb-4">
+                <i class="fas fa-futbol text-xl"></i>
+                <span class="text-lg font-semibold">Soccer Schedule</span>
+            </div>
+            <p class="text-gray-400 text-sm">
+                Live sports streaming schedule • Updates every 2 days
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        class SoccerScheduleApp {
+            constructor() {
+                this.apiUrl = 'https://your-render-app.onrender.com/api/schedule'; // You'll need to update this with your Render.com URL
+                this.streamBaseUrl = 'https://daddylive.dad/embed/stream-';
+                this.scheduleData = null;
+                this.currentDay = null;
+                this.filteredEvents = [];
+                this.expandedEvents = new Set();
+
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.updateCurrentTime();
+                this.fetchSchedule();
+
+                // Update time every minute
+                setInterval(() => this.updateCurrentTime(), 60000);
+            }
+
+            setupEventListeners() {
+                document.getElementById('refreshBtn').addEventListener('click', () => this.fetchSchedule());
+                document.getElementById('searchInput').addEventListener('input', (e) => this.handleSearch(e.target.value));
+                document.getElementById('leagueFilter').addEventListener('change', (e) => this.handleFilter(e.target.value));
+
+                // Handle dynamic buttons
+                document.addEventListener('click', (e) => {
+                    if (e.target.id === 'retryBtn') {
+                        this.fetchSchedule();
+                    }
+                });
+            }
+
+            updateCurrentTime() {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-GB', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'UTC'
+                });
+                document.getElementById('currentTime').textContent = timeString;
+            }
+
+            async fetchSchedule() {
+                this.showLoading();
+
+                try {
+                    const response = await fetch(this.apiUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (!data || typeof data !== 'object') {
+                        throw new Error('Invalid data format received');
+                    }
+
+                    this.scheduleData = data;
+                    this.processScheduleData();
+                    this.showSchedule();
+
+                } catch (error) {
+                    console.error('Failed to fetch schedule:', error);
+
+                    // Show a more helpful error message
+                    this.showErrorWithMessage(`
+                        <div class="text-center">
+                            <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-4"></i>
+                            <h3 class="text-lg font-semibold text-red-800 mb-2">Unable to Load Live Data</h3>
+                            <p class="text-red-600 mb-4">
+                                ${error.message}
+                            </p>
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                                <p class="text-sm text-yellow-800">
+                                    <strong>Note:</strong> If you're seeing this error:
+                                    <ul class="list-disc list-inside mt-2">
+                                        <li>The proxy server might be temporarily unavailable</li>
+                                        <li>Check if the proxy server is running</li>
+                                        <li>Verify the API endpoint is accessible</li>
+                                    </ul>
+                                </p>
+                            </div>
+                            <button id="retryBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-redo mr-2"></i>Retry
+                            </button>
+                        </div>
+                    `);
+                }
+            }
+
+            processScheduleData() {
+                if (!this.scheduleData) return;
+
+                const days = Object.keys(this.scheduleData);
+                this.setupDaySelector(days);
+
+                // Set current day to first available day
+                if (days.length > 0 && !this.currentDay) {
+                    this.currentDay = days[0];
+                }
+
+                this.populateLeagueFilter();
+                this.updateEventsList();
+            }
+
+            setupDaySelector(days) {
+                const selector = document.getElementById('daySelector');
+                selector.innerHTML = '';
+
+                days.forEach((day, index) => {
+                    const button = document.createElement('button');
+                    button.className = `day-btn px-6 py-3 rounded-lg font-medium ${day === this.currentDay ? 'active text-white' : 'text-gray-700 hover:bg-gray-100'
+                        }`;
+                    button.textContent = this.formatDayName(day);
+                    button.addEventListener('click', () => this.selectDay(day));
+                    selector.appendChild(button);
+                });
+            }
+
+            formatDayName(dayString) {
+                // Extract day name from string like "Saturday 14th June 2025 - Schedule Time UK GMT"
+                const parts = dayString.split(' ');
+                const dayName = parts[0];
+                const date = parts[1];
+                const month = parts[2];
+                return `${dayName} ${date} ${month}`;
+            }
+
+            selectDay(day) {
+                this.currentDay = day;
+                this.updateDayButtons();
+                this.updateEventsList();
+            }
+
+            updateDayButtons() {
+                const buttons = document.querySelectorAll('.day-btn');
+                buttons.forEach(button => {
+                    const isActive = button.textContent === this.formatDayName(this.currentDay);
+                    button.className = `day-btn px-6 py-3 rounded-lg font-medium ${isActive ? 'active text-white' : 'text-gray-700 hover:bg-gray-100'
+                        }`;
+                });
+            }
+
+            populateLeagueFilter() {
+                const leagues = new Set();
+
+                Object.values(this.scheduleData).forEach(dayData => {
+                    if (dayData.Soccer) {
+                        dayData.Soccer.forEach(event => {
+                            const league = this.extractLeague(event.event);
+                            if (league) leagues.add(league);
+                        });
+                    }
+                });
+
+                const filter = document.getElementById('leagueFilter');
+                filter.innerHTML = '<option value="">All Leagues</option>';
+
+                Array.from(leagues).sort().forEach(league => {
+                    const option = document.createElement('option');
+                    option.value = league;
+                    option.textContent = league;
+                    filter.appendChild(option);
+                });
+            }
+
+            extractLeague(eventString) {
+                // Extract league from string like "Ireland Republic - Premier Division : Sligo Rovers vs Waterford United"
+                const colonIndex = eventString.indexOf(':');
+                if (colonIndex === -1) return null;
+
+                return eventString.substring(0, colonIndex).trim();
+            }
+
+            updateEventsList() {
+                if (!this.scheduleData || !this.currentDay) return;
+
+                const dayData = this.scheduleData[this.currentDay];
+                const events = dayData && dayData.Soccer ? dayData.Soccer : [];
+
+                this.applyFilters(events);
+                this.renderEvents();
+                this.updateStats();
+            }
+
+            applyFilters(events) {
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                const selectedLeague = document.getElementById('leagueFilter').value;
+
+                this.filteredEvents = events.filter(event => {
+                    const matchesSearch = !searchTerm ||
+                        event.event.toLowerCase().includes(searchTerm);
+
+                    const matchesLeague = !selectedLeague ||
+                        this.extractLeague(event.event) === selectedLeague;
+
+                    return matchesSearch && matchesLeague;
+                });
+            }
+
+            renderEvents() {
+                const container = document.getElementById('eventsList');
+                const noResults = document.getElementById('noResults');
+
+                if (this.filteredEvents.length === 0) {
+                    container.innerHTML = '';
+                    noResults.classList.remove('hidden');
+                    return;
+                }
+
+                noResults.classList.add('hidden');
+                container.innerHTML = '';
+
+                this.filteredEvents.forEach((event, index) => {
+                    const eventCard = this.createEventCard(event, index);
+                    container.appendChild(eventCard);
+                });
+            }
+
+            createEventCard(event, index) {
+                const card = document.createElement('div');
+                card.className = 'event-card bg-white rounded-lg shadow-md p-6 cursor-pointer fade-in';
+
+                const isLive = this.isEventLive(event.time);
+                const isExpanded = this.expandedEvents.has(index);
+                const totalChannels = event.channels.length + event.channels2.length;
+
+                if (isExpanded) {
+                    card.classList.add('expanded');
+                }
+
+                card.innerHTML = `
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-3 mb-3">
+                                <span class="${isLive ? 'live-badge' : 'time-badge'} text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                    ${isLive ? 'LIVE' : event.time}
+                                </span>
+                                <span class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
+                                    ${totalChannels} channel${totalChannels !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <div class="text-sm text-gray-600 mb-1">${this.extractLeague(event.event)}</div>
+                                <div class="text-lg font-semibold text-gray-800">${this.extractMatch(event.event)}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-2">
+                            ${isLive ? '<i class="fas fa-circle text-red-500 animate-pulse"></i>' : ''}
+                            <i class="fas fa-chevron-${isExpanded ? 'up' : 'down'} text-gray-400"></i>
+                        </div>
+                    </div>
+                    
+                    <div id="channels-${index}" class="channels-container ${isExpanded ? 'block' : 'hidden'} mt-4 pt-4 border-t border-gray-200">
+                        ${this.renderChannels(event)}
+                    </div>
+                `;
+
+                card.addEventListener('click', () => this.toggleEvent(index));
+
+                return card;
+            }
+
+            extractMatch(eventString) {
+                const colonIndex = eventString.indexOf(':');
+                if (colonIndex === -1) return eventString;
+
+                return eventString.substring(colonIndex + 1).trim();
+            }
+
+            renderChannels(event) {
+                let html = '';
+
+                if (event.channels.length > 0) {
+                    html += '<div class="mb-4">';
+                    html += '<h4 class="text-sm font-semibold text-gray-700 mb-2">Primary Channels</h4>';
+                    html += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">';
+
+                    event.channels.forEach(channel => {
+                        html += `
+                            <button class="channel-btn text-white px-4 py-2 rounded-lg font-medium text-sm hover:shadow-lg transition-all"
+                                    onclick="window.open('${this.streamBaseUrl}${channel.channel_id}.php', '_blank')">
+                                <i class="fas fa-play mr-2"></i>${channel.channel_name}
+                            </button>
+                        `;
+                    });
+
+                    html += '</div></div>';
+                }
+
+                if (event.channels2.length > 0) {
+                    html += '<div>';
+                    html += '<h4 class="text-sm font-semibold text-gray-700 mb-2">Secondary Channels</h4>';
+                    html += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">';
+
+                    event.channels2.forEach(channel => {
+                        html += `
+                            <button class="channel-btn secondary text-white px-4 py-2 rounded-lg font-medium text-sm hover:shadow-lg transition-all"
+                                    onclick="window.open('${this.streamBaseUrl}${channel.channel_id}.php', '_blank')">
+                                <i class="fas fa-play mr-2"></i>${channel.channel_name}
+                            </button>
+                        `;
+                    });
+
+                    html += '</div></div>';
+                }
+
+                return html || '<p class="text-gray-500 text-sm">No channels available</p>';
+            }
+
+            toggleEvent(index) {
+                const channelsContainer = document.getElementById(`channels-${index}`);
+                const card = channelsContainer.closest('.event-card');
+
+                if (this.expandedEvents.has(index)) {
+                    this.expandedEvents.delete(index);
+                    channelsContainer.classList.add('hidden');
+                    card.classList.remove('expanded');
+                } else {
+                    this.expandedEvents.add(index);
+                    channelsContainer.classList.remove('hidden');
+                    channelsContainer.classList.add('slide-down');
+                    card.classList.add('expanded');
+                }
+
+                // Update chevron icon
+                const chevron = card.querySelector('.fa-chevron-up, .fa-chevron-down');
+                if (chevron) {
+                    chevron.className = `fas fa-chevron-${this.expandedEvents.has(index) ? 'up' : 'down'} text-gray-400`;
+                }
+            }
+
+            isEventLive(eventTime) {
+                const now = new Date();
+                const currentTime = now.toLocaleTimeString('en-GB', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'UTC'
+                });
+
+                // Simple check - in a real app you'd want more sophisticated time comparison
+                const [eventHour, eventMinute] = eventTime.split(':').map(Number);
+                const [currentHour, currentMinute] = currentTime.split(':').map(Number);
+
+                const eventMinutes = eventHour * 60 + eventMinute;
+                const currentMinutes = currentHour * 60 + currentMinute;
+
+                // Consider event live if it's within 2 hours of start time
+                return Math.abs(currentMinutes - eventMinutes) <= 120 && currentMinutes >= eventMinutes;
+            }
+
+            updateStats() {
+                const totalEvents = this.filteredEvents.length;
+                const liveEvents = this.filteredEvents.filter(event => this.isEventLive(event.time)).length;
+                const totalChannels = this.filteredEvents.reduce((sum, event) =>
+                    sum + event.channels.length + event.channels2.length, 0);
+
+                document.getElementById('totalEvents').textContent = totalEvents;
+                document.getElementById('liveEvents').textContent = liveEvents;
+                document.getElementById('totalChannels').textContent = totalChannels;
+            }
+
+            handleSearch(searchTerm) {
+                this.updateEventsList();
+            }
+
+            handleFilter(league) {
+                this.updateEventsList();
+            }
+
+            showLoading() {
+                document.getElementById('loadingState').classList.remove('hidden');
+                document.getElementById('errorState').classList.add('hidden');
+                document.getElementById('scheduleContent').classList.add('hidden');
+            }
+
+            showErrorWithMessage(htmlContent) {
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('scheduleContent').classList.add('hidden');
+
+                const errorState = document.getElementById('errorState');
+                errorState.innerHTML = htmlContent;
+                errorState.classList.remove('hidden');
+            }
+
+            showError() {
+                this.showErrorWithMessage(`
+                    <div class="text-center">
+                        <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-4"></i>
+                        <h3 class="text-lg font-semibold text-red-800 mb-2">Failed to Load Schedule</h3>
+                        <p class="text-red-600 mb-4">Unable to fetch the latest soccer schedule. Please try again.</p>
+                        <button id="retryBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors">
+                            <i class="fas fa-redo mr-2"></i>Retry
+                        </button>
+                    </div>
+                `);
+            }
+
+            showSchedule() {
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('errorState').classList.add('hidden');
+                document.getElementById('scheduleContent').classList.remove('hidden');
+            }
+        }
+
+        // Initialize the app when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new SoccerScheduleApp();
+        });
+    </script>
+</body>
+
+</html>
