@@ -273,7 +273,6 @@
                 this.currentDay = null;
                 this.filteredEvents = [];
                 this.expandedEvents = new Set();
-                this.timeZoneOffset = -6; // Calgary is GMT-6
 
                 this.init();
             }
@@ -306,12 +305,12 @@
 
             updateCurrentTime() {
                 const now = new Date();
-                const calgaryTime = now.toLocaleTimeString('en-US', {
+                const timeString = now.toLocaleTimeString('en-GB', {
                     hour: '2-digit',
                     minute: '2-digit',
-                    timeZone: 'America/Edmonton' // Calgary's timezone
+                    timeZone: 'UTC'
                 });
-                document.getElementById('currentTime').textContent = calgaryTime;
+                document.getElementById('currentTime').textContent = timeString;
             }
 
             async fetchSchedule() {
@@ -458,9 +457,7 @@
                 const dayData = this.scheduleData[this.currentDay];
                 const events = dayData && dayData.Soccer ? dayData.Soccer : [];
 
-                // Sort events by time before applying filters
-                const sortedEvents = this.sortEventsByTime(events);
-                this.applyFilters(sortedEvents);
+                this.applyFilters(events);
                 this.renderEvents();
                 this.updateStats();
             }
@@ -506,7 +503,6 @@
                 const isLive = this.isEventLive(event.time);
                 const isExpanded = this.expandedEvents.has(index);
                 const totalChannels = event.channels.length + event.channels2.length;
-                const calgaryTime = this.convertToCalgaryTime(event.time);
 
                 if (isExpanded) {
                     card.classList.add('expanded');
@@ -517,7 +513,7 @@
                         <div class="flex-1">
                             <div class="flex items-center space-x-3 mb-3">
                                 <span class="${isLive ? 'live-badge' : 'time-badge'} text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                    ${isLive ? 'LIVE' : calgaryTime}
+                                    ${isLive ? 'LIVE' : event.time}
                                 </span>
                                 <span class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
                                     ${totalChannels} channel${totalChannels !== 1 ? 's' : ''}
@@ -623,9 +619,9 @@
                     timeZone: 'UTC'
                 });
 
-                // Convert both times to Calgary time for comparison
-                const [eventHour, eventMinute] = this.convertToCalgaryTime(eventTime).split(':').map(Number);
-                const [currentHour, currentMinute] = this.convertToCalgaryTime(currentTime).split(':').map(Number);
+                // Simple check - in a real app you'd want more sophisticated time comparison
+                const [eventHour, eventMinute] = eventTime.split(':').map(Number);
+                const [currentHour, currentMinute] = currentTime.split(':').map(Number);
 
                 const eventMinutes = eventHour * 60 + eventMinute;
                 const currentMinutes = currentHour * 60 + currentMinute;
@@ -635,8 +631,8 @@
             }
 
             updateStats() {
-                const totalEvents = this.scheduleData[this.currentDay].Soccer.length;
-                const liveEvents = this.scheduleData[this.currentDay].Soccer.filter(event => this.isEventLive(event.time)).length;
+                const totalEvents = this.filteredEvents.length;
+                const liveEvents = this.filteredEvents.filter(event => this.isEventLive(event.time)).length;
 
                 document.getElementById('totalEvents').textContent = totalEvents;
                 document.getElementById('liveEvents').textContent = liveEvents;
@@ -685,40 +681,26 @@
             }
 
             showAllEvents() {
-                this.filteredEvents = this.scheduleData[this.currentDay].Soccer;
-                this.renderEvents();
-                this.updateStats();
+                // Reset filters and show all events
+                document.getElementById('searchInput').value = '';
+                document.getElementById('leagueFilter').value = '';
+                this.updateEventsList();
+
+                // Update active state
+                document.getElementById('totalEventsBtn').classList.add('ring-2', 'ring-blue-500');
+                document.getElementById('liveEventsBtn').classList.remove('ring-2', 'ring-green-500');
             }
 
             showLiveEvents() {
-                this.filteredEvents = this.scheduleData[this.currentDay].Soccer.filter(event => this.isEventLive(event.time));
+                // Filter to show only live events
+                const liveEvents = this.filteredEvents.filter(event => this.isEventLive(event.time));
+                this.filteredEvents = liveEvents;
                 this.renderEvents();
                 this.updateStats();
-            }
 
-            // Add new method to convert GMT time to Calgary time
-            convertToCalgaryTime(gmtTime) {
-                const [hours, minutes] = gmtTime.split(':').map(Number);
-                let calgaryHours = hours + this.timeZoneOffset;
-
-                // Handle day wrapping
-                if (calgaryHours < 0) {
-                    calgaryHours += 24;
-                } else if (calgaryHours >= 24) {
-                    calgaryHours -= 24;
-                }
-
-                // Format the time with leading zeros
-                return `${calgaryHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-            }
-
-            // Add method to sort events by time
-            sortEventsByTime(events) {
-                return events.sort((a, b) => {
-                    const timeA = this.convertToCalgaryTime(a.time);
-                    const timeB = this.convertToCalgaryTime(b.time);
-                    return timeA.localeCompare(timeB);
-                });
+                // Update active state
+                document.getElementById('liveEventsBtn').classList.add('ring-2', 'ring-green-500');
+                document.getElementById('totalEventsBtn').classList.remove('ring-2', 'ring-blue-500');
             }
         }
 
