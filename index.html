@@ -305,11 +305,13 @@
             }
 
             updateCurrentTime() {
-                const timeString = this.getCalgaryTime();
-                document.getElementById('currentTime').textContent = timeString;
-
-                // Update live status of events
-                this.updateEventsList();
+                const now = new Date();
+                const calgaryTime = now.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'America/Edmonton' // Calgary's timezone
+                });
+                document.getElementById('currentTime').textContent = calgaryTime;
             }
 
             async fetchSchedule() {
@@ -376,17 +378,6 @@
                 if (days.length > 0 && !this.currentDay) {
                     this.currentDay = days[0];
                 }
-
-                // Sort events by time for each day
-                Object.keys(this.scheduleData).forEach(day => {
-                    if (this.scheduleData[day].Soccer) {
-                        this.scheduleData[day].Soccer.sort((a, b) => {
-                            const timeA = this.convertGMTToCalgary(a.time);
-                            const timeB = this.convertGMTToCalgary(b.time);
-                            return timeA.localeCompare(timeB);
-                        });
-                    }
-                });
 
                 this.populateLeagueFilter();
                 this.updateEventsList();
@@ -467,7 +458,9 @@
                 const dayData = this.scheduleData[this.currentDay];
                 const events = dayData && dayData.Soccer ? dayData.Soccer : [];
 
-                this.applyFilters(events);
+                // Sort events by time before applying filters
+                const sortedEvents = this.sortEventsByTime(events);
+                this.applyFilters(sortedEvents);
                 this.renderEvents();
                 this.updateStats();
             }
@@ -513,7 +506,7 @@
                 const isLive = this.isEventLive(event.time);
                 const isExpanded = this.expandedEvents.has(index);
                 const totalChannels = event.channels.length + event.channels2.length;
-                const calgaryTime = this.convertGMTToCalgary(event.time);
+                const calgaryTime = this.convertToCalgaryTime(event.time);
 
                 if (isExpanded) {
                     card.classList.add('expanded');
@@ -624,27 +617,21 @@
 
             isEventLive(eventTime) {
                 const now = new Date();
-                const currentTime = this.getCalgaryTime();
-                const [eventHour, eventMinute] = eventTime.split(':').map(Number);
-                const [currentHour, currentMinute] = currentTime.split(':').map(Number);
+                const currentTime = now.toLocaleTimeString('en-GB', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'UTC'
+                });
 
-                // Convert both times to total minutes for easier comparison
-                const eventTotalMinutes = eventHour * 60 + eventMinute;
-                const currentTotalMinutes = currentHour * 60 + currentMinute;
+                // Convert both times to Calgary time for comparison
+                const [eventHour, eventMinute] = this.convertToCalgaryTime(eventTime).split(':').map(Number);
+                const [currentHour, currentMinute] = this.convertToCalgaryTime(currentTime).split(':').map(Number);
 
-                // Calculate time difference in minutes
-                let timeDiff = currentTotalMinutes - eventTotalMinutes;
+                const eventMinutes = eventHour * 60 + eventMinute;
+                const currentMinutes = currentHour * 60 + currentMinute;
 
-                // Handle day wrapping (if current time is less than event time, we're in the next day)
-                if (timeDiff < 0) {
-                    timeDiff += 24 * 60; // Add 24 hours worth of minutes
-                }
-
-                // Consider event live if:
-                // 1. The game has started (timeDiff >= 0)
-                // 2. The game is still within its duration window (timeDiff <= 120)
-                // This means a game that started at 10:00 will be live until 12:00
-                return timeDiff >= 0 && timeDiff <= 120;
+                // Consider event live if it's within 2 hours of start time
+                return Math.abs(currentMinutes - eventMinutes) <= 120 && currentMinutes >= eventMinutes;
             }
 
             updateStats() {
@@ -709,10 +696,9 @@
                 this.updateStats();
             }
 
-            // Add new time conversion methods
-            convertGMTToCalgary(timeStr) {
-                // Parse the time string (assuming 24-hour format)
-                const [hours, minutes] = timeStr.split(':').map(Number);
+            // Add new method to convert GMT time to Calgary time
+            convertToCalgaryTime(gmtTime) {
+                const [hours, minutes] = gmtTime.split(':').map(Number);
                 let calgaryHours = hours + this.timeZoneOffset;
 
                 // Handle day wrapping
@@ -722,24 +708,17 @@
                     calgaryHours -= 24;
                 }
 
-                // Format back to 24-hour time string
+                // Format the time with leading zeros
                 return `${calgaryHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
             }
 
-            getCalgaryTime() {
-                const now = new Date();
-                const utcHours = now.getUTCHours();
-                let calgaryHours = utcHours + this.timeZoneOffset;
-
-                // Handle day wrapping
-                if (calgaryHours < 0) {
-                    calgaryHours += 24;
-                } else if (calgaryHours >= 24) {
-                    calgaryHours -= 24;
-                }
-
-                // Format in 24-hour time
-                return `${calgaryHours.toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')}`;
+            // Add method to sort events by time
+            sortEventsByTime(events) {
+                return events.sort((a, b) => {
+                    const timeA = this.convertToCalgaryTime(a.time);
+                    const timeB = this.convertToCalgaryTime(b.time);
+                    return timeA.localeCompare(timeB);
+                });
             }
         }
 
