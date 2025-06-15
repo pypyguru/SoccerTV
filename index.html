@@ -625,11 +625,20 @@
                 const [eventHour, eventMinute] = eventTime.split(':').map(Number);
                 const [currentHour, currentMinute] = currentTime.split(':').map(Number);
 
-                const eventMinutes = eventHour * 60 + eventMinute;
-                const currentMinutes = currentHour * 60 + currentMinute;
+                // Convert both times to total minutes for easier comparison
+                const eventTotalMinutes = eventHour * 60 + eventMinute;
+                const currentTotalMinutes = currentHour * 60 + currentMinute;
 
-                // Consider event live if it's within 2 hours of start time
-                return Math.abs(currentMinutes - eventMinutes) <= 120 && currentMinutes >= eventMinutes;
+                // Calculate time difference in minutes
+                let timeDiff = currentTotalMinutes - eventTotalMinutes;
+
+                // Handle day wrapping (if current time is less than event time, we're in the next day)
+                if (timeDiff < 0) {
+                    timeDiff += 24 * 60; // Add 24 hours worth of minutes
+                }
+
+                // Consider event live if it started within the last 2 hours
+                return timeDiff >= 0 && timeDiff <= 120; // 120 minutes = 2 hours
             }
 
             updateStats() {
@@ -696,6 +705,7 @@
 
             // Add new time conversion methods
             convertGMTToCalgary(timeStr) {
+                // Parse the time string (assuming 24-hour format)
                 const [hours, minutes] = timeStr.split(':').map(Number);
                 let calgaryHours = hours + this.timeZoneOffset;
 
@@ -706,6 +716,7 @@
                     calgaryHours -= 24;
                 }
 
+                // Format back to 24-hour time string
                 return `${calgaryHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
             }
 
@@ -721,6 +732,7 @@
                     calgaryHours -= 24;
                 }
 
+                // Format in 24-hour time
                 return `${calgaryHours.toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')}`;
             }
         }
