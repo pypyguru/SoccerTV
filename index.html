@@ -223,18 +223,16 @@
         <div id="scheduleContent" class="hidden">
             <!-- Stats Bar -->
             <div class="bg-white rounded-lg shadow-md p-4 mb-6">
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-                    <div class="bg-blue-50 rounded-lg p-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
+                    <div class="bg-blue-50 rounded-lg p-3 cursor-pointer hover:bg-blue-100 transition-colors"
+                        id="totalEventsBtn">
                         <div class="text-2xl font-bold text-blue-600" id="totalEvents">0</div>
                         <div class="text-sm text-gray-600">Total Events</div>
                     </div>
-                    <div class="bg-green-50 rounded-lg p-3">
+                    <div class="bg-green-50 rounded-lg p-3 cursor-pointer hover:bg-green-100 transition-colors"
+                        id="liveEventsBtn">
                         <div class="text-2xl font-bold text-green-600" id="liveEvents">0</div>
                         <div class="text-sm text-gray-600">Live Now</div>
-                    </div>
-                    <div class="bg-purple-50 rounded-lg p-3">
-                        <div class="text-2xl font-bold text-purple-600" id="totalChannels">0</div>
-                        <div class="text-sm text-gray-600">Available Channels</div>
                     </div>
                 </div>
             </div>
@@ -292,6 +290,10 @@
                 document.getElementById('refreshBtn').addEventListener('click', () => this.fetchSchedule());
                 document.getElementById('searchInput').addEventListener('input', (e) => this.handleSearch(e.target.value));
                 document.getElementById('leagueFilter').addEventListener('change', (e) => this.handleFilter(e.target.value));
+
+                // Add click handlers for stats buttons
+                document.getElementById('totalEventsBtn').addEventListener('click', () => this.showAllEvents());
+                document.getElementById('liveEventsBtn').addEventListener('click', () => this.showLiveEvents());
 
                 // Handle dynamic buttons
                 document.addEventListener('click', (e) => {
@@ -629,14 +631,11 @@
             }
 
             updateStats() {
-                const totalEvents = this.filteredEvents.length;
-                const liveEvents = this.filteredEvents.filter(event => this.isEventLive(event.time)).length;
-                const totalChannels = this.filteredEvents.reduce((sum, event) =>
-                    sum + event.channels.length + event.channels2.length, 0);
+                const totalEvents = this.scheduleData[this.currentDay].Soccer.length;
+                const liveEvents = this.scheduleData[this.currentDay].Soccer.filter(event => this.isEventLive(event.time)).length;
 
                 document.getElementById('totalEvents').textContent = totalEvents;
                 document.getElementById('liveEvents').textContent = liveEvents;
-                document.getElementById('totalChannels').textContent = totalChannels;
             }
 
             handleSearch(searchTerm) {
@@ -679,6 +678,18 @@
                 document.getElementById('loadingState').classList.add('hidden');
                 document.getElementById('errorState').classList.add('hidden');
                 document.getElementById('scheduleContent').classList.remove('hidden');
+            }
+
+            showAllEvents() {
+                this.filteredEvents = this.scheduleData[this.currentDay].Soccer;
+                this.renderEvents();
+                this.updateStats();
+            }
+
+            showLiveEvents() {
+                this.filteredEvents = this.scheduleData[this.currentDay].Soccer.filter(event => this.isEventLive(event.time));
+                this.renderEvents();
+                this.updateStats();
             }
         }
 
