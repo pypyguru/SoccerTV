@@ -619,15 +619,21 @@
                     timeZone: 'UTC'
                 });
 
-                // Simple check - in a real app you'd want more sophisticated time comparison
+                // Parse event time and current time
                 const [eventHour, eventMinute] = eventTime.split(':').map(Number);
                 const [currentHour, currentMinute] = currentTime.split(':').map(Number);
 
+                // Convert to total minutes for easier comparison
                 const eventMinutes = eventHour * 60 + eventMinute;
                 const currentMinutes = currentHour * 60 + currentMinute;
 
-                // Consider event live if it's within 2 hours of start time
-                return Math.abs(currentMinutes - eventMinutes) <= 120 && currentMinutes >= eventMinutes;
+                // Calculate time difference in minutes
+                const timeDiff = currentMinutes - eventMinutes;
+
+                // Event is considered live if:
+                // 1. Current time is after or equal to event start time
+                // 2. Current time is within 120 minutes (2 hours) of event start time
+                return timeDiff >= 0 && timeDiff <= 120;
             }
 
             updateStats() {
