@@ -465,8 +465,28 @@
             applyFilters(events) {
                 const searchTerm = document.getElementById('searchInput').value.toLowerCase();
                 const selectedLeague = document.getElementById('leagueFilter').value;
+                const now = new Date();
+                const currentTime = now.toLocaleTimeString('en-GB', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'UTC'
+                });
+                const [currentHour, currentMinute] = currentTime.split(':').map(Number);
+                const currentMinutes = currentHour * 60 + currentMinute;
 
                 this.filteredEvents = events.filter(event => {
+                    // Parse event time
+                    const [eventHour, eventMinute] = event.time.split(':').map(Number);
+                    const eventMinutes = eventHour * 60 + eventMinute;
+
+                    // Calculate time difference in minutes
+                    const timeDiff = currentMinutes - eventMinutes;
+
+                    // Exclude events that ended more than 120 minutes ago
+                    if (timeDiff > 120) {
+                        return false;
+                    }
+
                     const matchesSearch = !searchTerm ||
                         event.event.toLowerCase().includes(searchTerm);
 
