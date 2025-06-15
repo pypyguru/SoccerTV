@@ -7,7 +7,7 @@ const port = process.env.PORT || 3000;
 
 // Enable CORS for GitHub Pages domain
 app.use(cors({
-    origin: ['https://*.github.io', 'http://localhost:5500'],
+    origin: ['https://pypyguru.github.io/SoccerTV/', 'http://localhost:5500'],
     methods: ['GET'],
     credentials: true
 }));
