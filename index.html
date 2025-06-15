@@ -170,24 +170,7 @@
                     </button>
                     <div class="text-right text-sm">
                         <div id="currentTime" class="font-medium"></div>
-                        <div class="flex items-center space-x-2">
-                            <select id="timezoneSelect" class="bg-transparent text-blue-100 focus:outline-none">
-                                <option value="GMT-6">GMT-6 (Central Time)</option>
-                                <option value="GMT-5">GMT-5 (Eastern Time)</option>
-                                <option value="GMT-8">GMT-8 (Pacific Time)</option>
-                                <option value="GMT-7">GMT-7 (Mountain Time)</option>
-                                <option value="GMT-4">GMT-4 (Atlantic Time)</option>
-                                <option value="GMT-3">GMT-3 (Brazil Time)</option>
-                                <option value="GMT+0">GMT+0 (London)</option>
-                                <option value="GMT+1">GMT+1 (Central European)</option>
-                                <option value="GMT+2">GMT+2 (Eastern European)</option>
-                                <option value="GMT+3">GMT+3 (Moscow)</option>
-                                <option value="GMT+5:30">GMT+5:30 (India)</option>
-                                <option value="GMT+8">GMT+8 (China)</option>
-                                <option value="GMT+9">GMT+9 (Japan)</option>
-                                <option value="GMT+10">GMT+10 (Australia)</option>
-                            </select>
-                        </div>
+                        <div class="text-blue-100">UK GMT</div>
                     </div>
                 </div>
             </div>
@@ -290,7 +273,7 @@
                 this.currentDay = null;
                 this.filteredEvents = [];
                 this.expandedEvents = new Set();
-                this.timezone = 'GMT-6'; // Default timezone
+                this.timeZoneOffset = -6; // Calgary is GMT-6
 
                 this.init();
             }
@@ -308,11 +291,6 @@
                 document.getElementById('refreshBtn').addEventListener('click', () => this.fetchSchedule());
                 document.getElementById('searchInput').addEventListener('input', (e) => this.handleSearch(e.target.value));
                 document.getElementById('leagueFilter').addEventListener('change', (e) => this.handleFilter(e.target.value));
-                document.getElementById('timezoneSelect').addEventListener('change', (e) => {
-                    this.timezone = e.target.value;
-                    this.updateCurrentTime();
-                    this.updateEventsList();
-                });
 
                 // Add click handlers for stats buttons
                 document.getElementById('totalEventsBtn').addEventListener('click', () => this.showAllEvents());
@@ -327,30 +305,8 @@
             }
 
             updateCurrentTime() {
-                const now = new Date();
-                const timeString = this.convertTimeToTimezone(now.toLocaleTimeString('en-GB', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: 'UTC'
-                }));
+                const timeString = this.getCalgaryTime();
                 document.getElementById('currentTime').textContent = timeString;
-            }
-
-            convertTimeToTimezone(timeString) {
-                const [hours, minutes] = timeString.split(':').map(Number);
-                const offset = this.getTimezoneOffset();
-                let newHours = hours + offset;
-
-                // Handle day wrapping
-                if (newHours >= 24) newHours -= 24;
-                if (newHours < 0) newHours += 24;
-
-                return `${String(newHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-            }
-
-            getTimezoneOffset() {
-                const offset = parseInt(this.timezone.replace('GMT', ''));
-                return offset;
             }
 
             async fetchSchedule() {
@@ -417,6 +373,17 @@
                 if (days.length > 0 && !this.currentDay) {
                     this.currentDay = days[0];
                 }
+
+                // Sort events by time for each day
+                Object.keys(this.scheduleData).forEach(day => {
+                    if (this.scheduleData[day].Soccer) {
+                        this.scheduleData[day].Soccer.sort((a, b) => {
+                            const timeA = this.convertGMTToCalgary(a.time);
+                            const timeB = this.convertGMTToCalgary(b.time);
+                            return timeA.localeCompare(timeB);
+                        });
+                    }
+                });
 
                 this.populateLeagueFilter();
                 this.updateEventsList();
@@ -543,7 +510,7 @@
                 const isLive = this.isEventLive(event.time);
                 const isExpanded = this.expandedEvents.has(index);
                 const totalChannels = event.channels.length + event.channels2.length;
-                const convertedTime = this.convertTimeToTimezone(event.time);
+                const calgaryTime = this.convertGMTToCalgary(event.time);
 
                 if (isExpanded) {
                     card.classList.add('expanded');
@@ -554,7 +521,7 @@
                         <div class="flex-1">
                             <div class="flex items-center space-x-3 mb-3">
                                 <span class="${isLive ? 'live-badge' : 'time-badge'} text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                    ${isLive ? 'LIVE' : convertedTime}
+                                    ${isLive ? 'LIVE' : calgaryTime}
                                 </span>
                                 <span class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
                                     ${totalChannels} channel${totalChannels !== 1 ? 's' : ''}
@@ -654,13 +621,7 @@
 
             isEventLive(eventTime) {
                 const now = new Date();
-                const currentTime = this.convertTimeToTimezone(now.toLocaleTimeString('en-GB', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: 'UTC'
-                }));
-
-                // Simple check - in a real app you'd want more sophisticated time comparison
+                const currentTime = this.getCalgaryTime();
                 const [eventHour, eventMinute] = eventTime.split(':').map(Number);
                 const [currentHour, currentMinute] = currentTime.split(':').map(Number);
 
@@ -731,6 +692,36 @@
                 this.filteredEvents = this.scheduleData[this.currentDay].Soccer.filter(event => this.isEventLive(event.time));
                 this.renderEvents();
                 this.updateStats();
+            }
+
+            // Add new time conversion methods
+            convertGMTToCalgary(timeStr) {
+                const [hours, minutes] = timeStr.split(':').map(Number);
+                let calgaryHours = hours + this.timeZoneOffset;
+
+                // Handle day wrapping
+                if (calgaryHours < 0) {
+                    calgaryHours += 24;
+                } else if (calgaryHours >= 24) {
+                    calgaryHours -= 24;
+                }
+
+                return `${calgaryHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            }
+
+            getCalgaryTime() {
+                const now = new Date();
+                const utcHours = now.getUTCHours();
+                let calgaryHours = utcHours + this.timeZoneOffset;
+
+                // Handle day wrapping
+                if (calgaryHours < 0) {
+                    calgaryHours += 24;
+                } else if (calgaryHours >= 24) {
+                    calgaryHours -= 24;
+                }
+
+                return `${calgaryHours.toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')}`;
             }
         }
 
