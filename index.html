@@ -307,6 +307,9 @@
             updateCurrentTime() {
                 const timeString = this.getCalgaryTime();
                 document.getElementById('currentTime').textContent = timeString;
+
+                // Update live status of events
+                this.updateEventsList();
             }
 
             async fetchSchedule() {
@@ -637,8 +640,11 @@
                     timeDiff += 24 * 60; // Add 24 hours worth of minutes
                 }
 
-                // Consider event live if it started within the last 2 hours
-                return timeDiff >= 0 && timeDiff <= 120; // 120 minutes = 2 hours
+                // Consider event live if:
+                // 1. The game has started (timeDiff >= 0)
+                // 2. The game is still within its duration window (timeDiff <= 120)
+                // This means a game that started at 10:00 will be live until 12:00
+                return timeDiff >= 0 && timeDiff <= 120;
             }
 
             updateStats() {
