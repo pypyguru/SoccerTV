@@ -479,6 +479,7 @@
             applyFilters(events) {
                 const searchTerm = document.getElementById('searchInput').value.toLowerCase();
                 const selectedLeague = document.getElementById('leagueFilter').value;
+                const timezone = document.getElementById('timezoneSelect').value;
 
                 this.filteredEvents = events.filter(event => {
                     const matchesSearch = !searchTerm ||
@@ -490,10 +491,10 @@
                     return matchesSearch && matchesLeague;
                 });
 
-                // Sort events by time
+                // Sort events by converted time
                 this.filteredEvents.sort((a, b) => {
-                    const timeA = a.time.split(':').map(Number);
-                    const timeB = b.time.split(':').map(Number);
+                    const timeA = this.convertTime(a.time, timezone).split(':').map(Number);
+                    const timeB = this.convertTime(b.time, timezone).split(':').map(Number);
 
                     // Compare hours first
                     if (timeA[0] !== timeB[0]) {
@@ -534,7 +535,6 @@
                         <div class="flex items-center space-x-4">
                             <div class="time-badge px-3 py-1 rounded-full text-white text-sm font-medium">
                                 ${convertedTime}
-                                ${timezone !== 'GMT' ? `<span class="text-xs ml-1">(${event.time} GMT)</span>` : ''}
                             </div>
                             <h3 class="text-lg font-semibold text-gray-800">${event.event}</h3>
                         </div>
