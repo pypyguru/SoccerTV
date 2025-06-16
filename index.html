@@ -559,7 +559,7 @@
                 const card = document.createElement('div');
                 const timezone = document.getElementById('timezoneSelect').value;
                 const convertedTime = this.convertTime(event.time, timezone);
-                const isLive = this.isEventLive(event.time);
+                const isLive = this.isEventLive(event.time, this.currentDay);
                 const isExpanded = this.expandedEvents.has(index);
                 const totalChannels = event.channels.length + event.channels2.length;
 
@@ -665,9 +665,23 @@
                 }
             }
 
-            isEventLive(time) {
-                const timezone = document.getElementById('timezoneSelect').value;
+            isEventLive(time, dateString) {
+                // Extract date from string like "Sunday 15th June 2025 - Schedule Time UK GMT"
+                const dateMatch = dateString.match(/(\d{1,2})(?:st|nd|rd|th)\s+(\w+)\s+(\d{4})/);
+                if (!dateMatch) return false;
+
+                const [_, day, month, year] = dateMatch;
+                const monthIndex = new Date(`${month} 1, 2000`).getMonth();
                 const [hours, minutes] = time.split(':').map(Number);
+
+                // Create event time in GMT
+                const eventTime = new Date(Date.UTC(
+                    parseInt(year),
+                    monthIndex,
+                    parseInt(day),
+                    hours,
+                    minutes
+                ));
 
                 // Get current time in GMT
                 const now = new Date();
@@ -679,20 +693,17 @@
                     now.getUTCMinutes()
                 ));
 
-                // Create event time in GMT
-                const eventTime = new Date(Date.UTC(
-                    now.getUTCFullYear(),
-                    now.getUTCMonth(),
-                    now.getUTCDate(),
-                    hours,
-                    minutes
-                ));
-
                 // Calculate time difference in hours
                 const timeDiff = Math.abs(currentGMT.getTime() - eventTime.getTime()) / (1000 * 60 * 60);
 
-                // Event is live if it's within 2 hours of the current GMT time
-                return timeDiff <= 2;
+                // Event is live if:
+                // 1. It's within 2 hours of the current GMT time
+                // 2. The event date matches the current date (or is within the same day)
+                const isSameDay = eventTime.getUTCDate() === currentGMT.getUTCDate() &&
+                    eventTime.getUTCMonth() === currentGMT.getUTCMonth() &&
+                    eventTime.getUTCFullYear() === currentGMT.getUTCFullYear();
+
+                return timeDiff <= 2 && isSameDay;
             }
 
             convertTime(time, targetTimezone) {
@@ -714,7 +725,7 @@
 
             updateStats() {
                 const totalEvents = this.filteredEvents.length;
-                const liveEvents = this.filteredEvents.filter(event => this.isEventLive(event.time)).length;
+                const liveEvents = this.filteredEvents.filter(event => this.isEventLive(event.time, this.currentDay)).length;
 
                 document.getElementById('totalEvents').textContent = totalEvents;
                 document.getElementById('liveEvents').textContent = liveEvents;
@@ -775,7 +786,7 @@
 
             showLiveEvents() {
                 // Filter to show only live events
-                const liveEvents = this.filteredEvents.filter(event => this.isEventLive(event.time));
+                const liveEvents = this.filteredEvents.filter(event => this.isEventLive(event.time, this.currentDay));
                 this.filteredEvents = liveEvents;
                 this.renderEvents();
                 this.updateStats();
