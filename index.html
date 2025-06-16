@@ -170,9 +170,14 @@
                         class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors">
                         <i class="fas fa-sync-alt mr-2"></i>Refresh
                     </button>
+                    <select id="timezoneSelect"
+                        class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors text-white border border-white/30">
+                        <option value="GMT">GMT</option>
+                        <option value="GMT-6" selected>GMT-6 (Central Time)</option>
+                    </select>
                     <div class="text-right text-sm">
                         <div id="currentTime" class="font-medium"></div>
-                        <div class="text-blue-100">UK GMT</div>
+                        <div id="timezoneLabel" class="text-blue-100">GMT-6 (Central Time)</div>
                     </div>
                 </div>
             </div>
@@ -293,6 +298,10 @@
                 document.getElementById('refreshBtn').addEventListener('click', () => this.fetchSchedule());
                 document.getElementById('searchInput').addEventListener('input', (e) => this.handleSearch(e.target.value));
                 document.getElementById('leagueFilter').addEventListener('change', (e) => this.handleFilter(e.target.value));
+                document.getElementById('timezoneSelect').addEventListener('change', () => {
+                    this.updateCurrentTime();
+                    this.updateEventsList();
+                });
 
                 // Add click handlers for stats buttons
                 document.getElementById('totalEventsBtn').addEventListener('click', () => this.showAllEvents());
@@ -308,12 +317,14 @@
 
             updateCurrentTime() {
                 const now = new Date();
+                const timezone = document.getElementById('timezoneSelect').value;
                 const timeString = now.toLocaleTimeString('en-GB', {
                     hour: '2-digit',
                     minute: '2-digit',
-                    timeZone: 'UTC'
+                    timeZone: timezone === 'GMT' ? 'UTC' : 'America/Chicago'
                 });
                 document.getElementById('currentTime').textContent = timeString;
+                document.getElementById('timezoneLabel').textContent = timezone === 'GMT' ? 'GMT' : 'GMT-6 (Central Time)';
             }
 
             async fetchSchedule() {
@@ -514,85 +525,63 @@
 
             createEventCard(event, index) {
                 const card = document.createElement('div');
-                card.className = 'event-card bg-white rounded-lg shadow-md p-6 cursor-pointer fade-in';
+                const timezone = document.getElementById('timezoneSelect').value;
+                const convertedTime = this.convertTime(event.time, timezone);
 
-                const isLive = this.isEventLive(event.time);
-                const isExpanded = this.expandedEvents.has(index);
-                const totalChannels = event.channels.length + event.channels2.length;
-
-                if (isExpanded) {
-                    card.classList.add('expanded');
-                }
-
+                card.className = `event-card bg-white rounded-lg shadow-md p-4 fade-in`;
                 card.innerHTML = `
                     <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                            <div class="flex items-center space-x-3 mb-3">
-                                <span class="${isLive ? 'live-badge' : 'time-badge'} text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                    ${isLive ? 'LIVE' : event.time}
-                                </span>
-                                <span class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-                                    ${totalChannels} channel${totalChannels !== 1 ? 's' : ''}
-                                </span>
+                        <div class="flex items-center space-x-4">
+                            <div class="time-badge px-3 py-1 rounded-full text-white text-sm font-medium">
+                                ${convertedTime}
+                                ${timezone !== 'GMT' ? `<span class="text-xs ml-1">(${event.time} GMT)</span>` : ''}
                             </div>
-                            
-                            <div class="mb-2">
-                                <div class="text-sm text-gray-600 mb-1">${this.extractLeague(event.event)}</div>
-                                <div class="text-lg font-semibold text-gray-800">${this.extractMatch(event.event)}</div>
-                            </div>
+                            <h3 class="text-lg font-semibold text-gray-800">${event.event}</h3>
                         </div>
-                        
-                        <div class="flex items-center space-x-2">
-                            ${isLive ? '<i class="fas fa-circle text-red-500 animate-pulse"></i>' : ''}
-                            <i class="fas fa-chevron-${isExpanded ? 'up' : 'down'} text-gray-400"></i>
-                        </div>
+                        <button class="expand-btn text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
                     </div>
-                    
-                    <div id="channels-${index}" class="channels-container ${isExpanded ? 'block' : 'hidden'} mt-4 pt-4 border-t border-gray-200">
-                        ${this.renderChannels(event)}
+                    <div class="channels-container hidden mt-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            ${this.renderChannels(event.channels, 'primary')}
+                            ${this.renderChannels(event.channels2, 'secondary')}
+                        </div>
                     </div>
                 `;
 
-                card.addEventListener('click', () => this.toggleEvent(index));
+                // Add click handler for expand/collapse
+                const expandBtn = card.querySelector('.expand-btn');
+                expandBtn.addEventListener('click', () => this.toggleEventCard(card, index));
 
                 return card;
             }
 
-            extractMatch(eventString) {
-                const colonIndex = eventString.indexOf(':');
-                if (colonIndex === -1) return eventString;
+            convertTime(time, targetTimezone) {
+                if (targetTimezone === 'GMT') return time;
 
-                return eventString.substring(colonIndex + 1).trim();
-            }
+                const [hours, minutes] = time.split(':').map(Number);
+                let convertedHours = hours - 6; // Convert to GMT-6
 
-            renderChannels(event) {
-                let html = '';
-
-                if (event.channels.length > 0) {
-                    html += '<div class="mb-4">';
-                    html += '<h4 class="text-sm font-semibold text-gray-700 mb-2">Primary Channels</h4>';
-                    html += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">';
-
-                    event.channels.forEach(channel => {
-                        html += `
-                            <button class="channel-btn text-white px-4 py-2 rounded-lg font-medium text-sm hover:shadow-lg transition-all"
-                                    onclick="window.open('${this.streamBaseUrl}${channel.channel_id}.php', '_blank')">
-                                <i class="fas fa-play mr-2"></i>${channel.channel_name}
-                            </button>
-                        `;
-                    });
-
-                    html += '</div></div>';
+                // Handle day wrapping
+                if (convertedHours < 0) {
+                    convertedHours += 24;
                 }
 
-                if (event.channels2.length > 0) {
-                    html += '<div>';
-                    html += '<h4 class="text-sm font-semibold text-gray-700 mb-2">Secondary Channels</h4>';
+                return `${convertedHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            }
+
+            renderChannels(channels, type) {
+                let html = '';
+
+                if (channels.length > 0) {
+                    html += '<div class="mb-4">';
+                    html += `<h4 class="text-sm font-semibold text-gray-700 mb-2">${type.charAt(0).toUpperCase() + type.slice(1)} Channels</h4>`;
                     html += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">';
 
-                    event.channels2.forEach(channel => {
+                    channels.forEach(channel => {
                         html += `
-                            <button class="channel-btn secondary text-white px-4 py-2 rounded-lg font-medium text-sm hover:shadow-lg transition-all"
+                            <button class="channel-btn text-white px-4 py-2 rounded-lg font-medium text-sm hover:shadow-lg transition-all"
                                     onclick="window.open('${this.streamBaseUrl}${channel.channel_id}.php', '_blank')">
                                 <i class="fas fa-play mr-2"></i>${channel.channel_name}
                             </button>
@@ -605,25 +594,24 @@
                 return html || '<p class="text-gray-500 text-sm">No channels available</p>';
             }
 
-            toggleEvent(index) {
+            toggleEventCard(card, index) {
                 const channelsContainer = document.getElementById(`channels-${index}`);
-                const card = channelsContainer.closest('.event-card');
+                const isExpanded = channelsContainer.classList.contains('hidden');
 
-                if (this.expandedEvents.has(index)) {
-                    this.expandedEvents.delete(index);
-                    channelsContainer.classList.add('hidden');
-                    card.classList.remove('expanded');
-                } else {
-                    this.expandedEvents.add(index);
+                if (isExpanded) {
                     channelsContainer.classList.remove('hidden');
                     channelsContainer.classList.add('slide-down');
                     card.classList.add('expanded');
+                } else {
+                    channelsContainer.classList.add('hidden');
+                    channelsContainer.classList.remove('slide-down');
+                    card.classList.remove('expanded');
                 }
 
                 // Update chevron icon
                 const chevron = card.querySelector('.fa-chevron-up, .fa-chevron-down');
                 if (chevron) {
-                    chevron.className = `fas fa-chevron-${this.expandedEvents.has(index) ? 'up' : 'down'} text-gray-400`;
+                    chevron.className = `fas fa-chevron-${isExpanded ? 'up' : 'down'} text-gray-400`;
                 }
             }
 
