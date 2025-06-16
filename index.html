@@ -676,6 +676,23 @@
                 return timeDiff <= 2 * 60 * 60 * 1000; // 2 hours in milliseconds
             }
 
+            convertTime(time, targetTimezone) {
+                if (targetTimezone === 'GMT') return time;
+
+                const [hours, minutes] = time.split(':').map(Number);
+                const offset = parseInt(targetTimezone.replace('GMT', ''));
+                let convertedHours = hours + offset; // Add offset to convert to target timezone
+
+                // Handle day wrapping
+                if (convertedHours < 0) {
+                    convertedHours += 24;
+                } else if (convertedHours >= 24) {
+                    convertedHours -= 24;
+                }
+
+                return `${convertedHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            }
+
             updateStats() {
                 const totalEvents = this.filteredEvents.length;
                 const liveEvents = this.filteredEvents.filter(event => this.isEventLive(event.time)).length;
