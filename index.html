@@ -666,30 +666,33 @@
             }
 
             isEventLive(time) {
-                const now = new Date();
                 const timezone = document.getElementById('timezoneSelect').value;
                 const [hours, minutes] = time.split(':').map(Number);
 
+                // Get current time in GMT
+                const now = new Date();
+                const currentGMT = new Date(Date.UTC(
+                    now.getUTCFullYear(),
+                    now.getUTCMonth(),
+                    now.getUTCDate(),
+                    now.getUTCHours(),
+                    now.getUTCMinutes()
+                ));
+
                 // Create event time in GMT
-                const eventTime = new Date();
-                eventTime.setUTCHours(hours, minutes, 0, 0);
-
-                // Convert event time to selected timezone
-                const offset = parseInt(timezone.replace('GMT', ''));
-                eventTime.setHours(eventTime.getHours() + offset);
-
-                // Get current time in selected timezone
-                const currentTime = new Date();
-                const currentOffset = currentTime.getTimezoneOffset() / -60; // Convert to positive hours
-                currentTime.setHours(currentTime.getHours() + currentOffset + offset);
+                const eventTime = new Date(Date.UTC(
+                    now.getUTCFullYear(),
+                    now.getUTCMonth(),
+                    now.getUTCDate(),
+                    hours,
+                    minutes
+                ));
 
                 // Calculate time difference in hours
-                const timeDiff = Math.abs(currentTime.getTime() - eventTime.getTime()) / (1000 * 60 * 60);
+                const timeDiff = Math.abs(currentGMT.getTime() - eventTime.getTime()) / (1000 * 60 * 60);
 
-                // Event is live if:
-                // 1. It's within 2 hours of the current time
-                // 2. The event time is in the future (not past)
-                return timeDiff <= 2 && eventTime > currentTime;
+                // Event is live if it's within 2 hours of the current GMT time
+                return timeDiff <= 2;
             }
 
             convertTime(time, targetTimezone) {
