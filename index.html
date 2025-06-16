@@ -5,8 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Soccer Schedule - Live Streams</title>
-    <link rel="icon" type="image/svg+xml"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -161,7 +159,7 @@
                 <div class="flex items-center space-x-3">
                     <i class="fas fa-futbol text-3xl"></i>
                     <div>
-                        <h1 class="text-2xl font-bold">Live Soccer TV</h1>
+                        <h1 class="text-2xl font-bold">Soccer Schedule</h1>
                         <p class="text-blue-100 text-sm">Live Sports Streaming</p>
                     </div>
                 </div>
@@ -258,19 +256,11 @@
         <div class="container mx-auto px-4 text-center">
             <div class="flex items-center justify-center space-x-2 mb-4">
                 <i class="fas fa-futbol text-xl"></i>
-                <span class="text-lg font-semibold">Live Soccer TV</span>
+                <span class="text-lg font-semibold">Soccer Schedule</span>
             </div>
-            <p class="text-gray-400 text-sm mb-4">
+            <p class="text-gray-400 text-sm">
                 Live sports streaming schedule • Updates every 2 days
             </p>
-            <div class="text-gray-400 text-xs max-w-3xl mx-auto">
-                <p class="mb-2">Disclaimer - Our platform merely displays links to audiovisual content located on
-                    servers of third parties and provided and/or transmitted by third parties. We DO NOT host nor
-                    transmit any audiovisual content itself and DO NOT control nor influence such content. We cannot
-                    accept any liability for the content transmitted by others. Any responsibility for this content lies
-                    with those who host or transmit it. We are not affiliated nor claim to be affiliated with any of the
-                    owners of streams and/or videos. All content is copyright of their respective owners</p>
-            </div>
         </div>
     </footer>
 
@@ -475,28 +465,8 @@
             applyFilters(events) {
                 const searchTerm = document.getElementById('searchInput').value.toLowerCase();
                 const selectedLeague = document.getElementById('leagueFilter').value;
-                const now = new Date();
-                const currentTime = now.toLocaleTimeString('en-GB', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: 'UTC'
-                });
-                const [currentHour, currentMinute] = currentTime.split(':').map(Number);
-                const currentMinutes = currentHour * 60 + currentMinute;
 
                 this.filteredEvents = events.filter(event => {
-                    // Parse event time
-                    const [eventHour, eventMinute] = event.time.split(':').map(Number);
-                    const eventMinutes = eventHour * 60 + eventMinute;
-
-                    // Calculate time difference in minutes
-                    const timeDiff = currentMinutes - eventMinutes;
-
-                    // Exclude events that ended more than 120 minutes ago
-                    if (timeDiff > 120) {
-                        return false;
-                    }
-
                     const matchesSearch = !searchTerm ||
                         event.event.toLowerCase().includes(searchTerm);
 
