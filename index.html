@@ -674,7 +674,7 @@
                 const monthIndex = new Date(`${month} 1, 2000`).getMonth();
                 const [hours, minutes] = time.split(':').map(Number);
 
-                // Create event time in GMT
+                // Create event time in UTC
                 const eventTime = new Date(Date.UTC(
                     parseInt(year),
                     monthIndex,
@@ -683,9 +683,9 @@
                     minutes
                 ));
 
-                // Get current time in GMT
+                // Get current time in UTC
                 const now = new Date();
-                const currentGMT = new Date(Date.UTC(
+                const currentUTC = new Date(Date.UTC(
                     now.getUTCFullYear(),
                     now.getUTCMonth(),
                     now.getUTCDate(),
@@ -694,14 +694,14 @@
                 ));
 
                 // Calculate time difference in hours
-                const timeDiff = Math.abs(currentGMT.getTime() - eventTime.getTime()) / (1000 * 60 * 60);
+                const timeDiff = Math.abs(currentUTC.getTime() - eventTime.getTime()) / (1000 * 60 * 60);
 
                 // Event is live if:
-                // 1. It's within 2 hours of the current GMT time
+                // 1. It's within 2 hours of the current UTC time
                 // 2. The event date matches the current date (or is within the same day)
-                const isSameDay = eventTime.getUTCDate() === currentGMT.getUTCDate() &&
-                    eventTime.getUTCMonth() === currentGMT.getUTCMonth() &&
-                    eventTime.getUTCFullYear() === currentGMT.getUTCFullYear();
+                const isSameDay = eventTime.getUTCDate() === currentUTC.getUTCDate() &&
+                    eventTime.getUTCMonth() === currentUTC.getUTCMonth() &&
+                    eventTime.getUTCFullYear() === currentUTC.getUTCFullYear();
 
                 return timeDiff <= 2 && isSameDay;
             }
