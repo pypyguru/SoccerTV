@@ -649,17 +649,18 @@
                     now.getUTCMinutes()
                 ));
 
-                // Calculate time difference in hours
-                const timeDiff = Math.abs(currentUTC.getTime() - eventTime.getTime()) / (1000 * 60 * 60);
+                // Calculate time difference in minutes
+                const timeDiff = (currentUTC.getTime() - eventTime.getTime()) / (1000 * 60);
 
                 // Event is live if:
-                // 1. It's within 2 hours of the current UTC time
-                // 2. The event date matches the current date (or is within the same day)
+                // 1. Current time is after or equal to event start time
+                // 2. Current time is within 120 minutes (2 hours) after event start time
+                // 3. The event date matches the current date
                 const isSameDay = eventTime.getUTCDate() === currentUTC.getUTCDate() &&
                     eventTime.getUTCMonth() === currentUTC.getUTCMonth() &&
                     eventTime.getUTCFullYear() === currentUTC.getUTCFullYear();
 
-                return timeDiff <= 2 && isSameDay;
+                return timeDiff >= 0 && timeDiff <= 120 && isSameDay;
             }
 
             convertTime(time) {
