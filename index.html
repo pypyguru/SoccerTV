@@ -170,24 +170,9 @@
                         class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors">
                         <i class="fas fa-sync-alt mr-2"></i>Refresh
                     </button>
-                    <select id="timezoneSelect"
-                        class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors text-white border border-white/30">
-                        <option value="GMT-6">GMT-6 (Central Time)</option>
-                        <option value="GMT-5">GMT-5 (Eastern Time)</option>
-                        <option value="GMT-7">GMT-7 (Mountain Time)</option>
-                        <option value="GMT-8">GMT-8 (Pacific Time)</option>
-                        <option value="GMT-4">GMT-4 (Atlantic Time)</option>
-                        <option value="GMT-3">GMT-3 (Brazil Time)</option>
-                        <option value="GMT+1">GMT+1 (Central European Time)</option>
-                        <option value="GMT+2">GMT+2 (Eastern European Time)</option>
-                        <option value="GMT+8">GMT+8 (China Standard Time)</option>
-                        <option value="GMT+9">GMT+9 (Japan Standard Time)</option>
-                        <option value="GMT+10">GMT+10 (Australian Eastern Time)</option>
-                        <option value="GMT">GMT (Greenwich Mean Time)</option>
-                    </select>
                     <div class="text-right text-sm">
                         <div id="currentTime" class="font-medium"></div>
-                        <div id="timezoneLabel" class="text-blue-100">GMT-6 (Central Time)</div>
+                        <div class="text-blue-100">UTC Time</div>
                     </div>
                 </div>
             </div>
@@ -297,7 +282,6 @@
 
             init() {
                 this.setupEventListeners();
-                this.detectUserTimezone();
                 this.updateCurrentTime();
                 this.fetchSchedule();
 
@@ -309,10 +293,6 @@
                 document.getElementById('refreshBtn').addEventListener('click', () => this.fetchSchedule());
                 document.getElementById('searchInput').addEventListener('input', (e) => this.handleSearch(e.target.value));
                 document.getElementById('leagueFilter').addEventListener('change', (e) => this.handleFilter(e.target.value));
-                document.getElementById('timezoneSelect').addEventListener('change', () => {
-                    this.updateCurrentTime();
-                    this.updateEventsList();
-                });
 
                 // Add click handlers for stats buttons
                 document.getElementById('totalEventsBtn').addEventListener('click', () => this.showAllEvents());
@@ -326,36 +306,14 @@
                 });
             }
 
-            detectUserTimezone() {
-                try {
-                    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                    const offset = new Date().getTimezoneOffset() / -60; // Convert to positive hours
-                    const gmtOffset = `GMT${offset >= 0 ? '+' : ''}${offset}`;
-
-                    // Find the closest matching timezone in our select
-                    const timezoneSelect = document.getElementById('timezoneSelect');
-                    const options = Array.from(timezoneSelect.options);
-                    const closestOption = options.find(option => option.value === gmtOffset);
-
-                    if (closestOption) {
-                        timezoneSelect.value = gmtOffset;
-                        document.getElementById('timezoneLabel').textContent = closestOption.text;
-                    }
-                } catch (error) {
-                    console.warn('Could not detect user timezone:', error);
-                }
-            }
-
             updateCurrentTime() {
                 const now = new Date();
-                const timezone = document.getElementById('timezoneSelect').value;
                 const timeString = now.toLocaleTimeString('en-GB', {
                     hour: '2-digit',
                     minute: '2-digit',
-                    timeZone: timezone === 'GMT' ? 'UTC' : 'America/Chicago'
+                    timeZone: 'UTC'
                 });
                 document.getElementById('currentTime').textContent = timeString;
-                document.getElementById('timezoneLabel').textContent = timezone === 'GMT' ? 'GMT' : 'GMT-6 (Central Time)';
             }
 
             async fetchSchedule() {
@@ -510,7 +468,6 @@
             applyFilters(events) {
                 const searchTerm = document.getElementById('searchInput').value.toLowerCase();
                 const selectedLeague = document.getElementById('leagueFilter').value;
-                const timezone = document.getElementById('timezoneSelect').value;
 
                 this.filteredEvents = events.filter(event => {
                     const matchesSearch = !searchTerm ||
@@ -522,10 +479,10 @@
                     return matchesSearch && matchesLeague;
                 });
 
-                // Sort events by converted time
+                // Sort events by time
                 this.filteredEvents.sort((a, b) => {
-                    const timeA = this.convertTime(a.time, timezone).split(':').map(Number);
-                    const timeB = this.convertTime(b.time, timezone).split(':').map(Number);
+                    const timeA = a.time.split(':').map(Number);
+                    const timeB = b.time.split(':').map(Number);
 
                     // Compare hours first
                     if (timeA[0] !== timeB[0]) {
@@ -557,8 +514,6 @@
 
             createEventCard(event, index) {
                 const card = document.createElement('div');
-                const timezone = document.getElementById('timezoneSelect').value;
-                const convertedTime = this.convertTime(event.time, timezone);
                 const isLive = this.isEventLive(event.time, this.currentDay);
                 const isExpanded = this.expandedEvents.has(index);
                 const totalChannels = event.channels.length + event.channels2.length;
@@ -569,7 +524,7 @@
                         <div class="flex-1">
                             <div class="flex items-center space-x-3 mb-3">
                                 <span class="${isLive ? 'live-badge' : 'time-badge'} text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                    ${isLive ? 'LIVE' : convertedTime}
+                                    ${isLive ? 'LIVE' : event.time}
                                 </span>
                                 <span class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
                                     ${totalChannels} channel${totalChannels !== 1 ? 's' : ''}
