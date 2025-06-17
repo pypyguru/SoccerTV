@@ -308,11 +308,17 @@
 
             updateCurrentTime() {
                 const now = new Date();
-                const timeString = now.toLocaleTimeString('en-GB', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: 'America/Chicago'
-                });
+                // Get UTC time and subtract 6 hours for UTC-6
+                const utcHours = now.getUTCHours();
+                const utcMinutes = now.getUTCMinutes();
+
+                let centralHours = utcHours - 6;
+                // Handle day wrapping
+                if (centralHours < 0) {
+                    centralHours += 24;
+                }
+
+                const timeString = `${centralHours.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}`;
                 document.getElementById('currentTime').textContent = timeString;
             }
 
