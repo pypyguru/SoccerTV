@@ -172,7 +172,7 @@
                     </button>
                     <div class="text-right text-sm">
                         <div id="currentTime" class="font-medium"></div>
-                        <div class="text-blue-100">UTC Time</div>
+                        <div class="text-blue-100">Central Time (UTC-6)</div>
                     </div>
                 </div>
             </div>
@@ -311,7 +311,7 @@
                 const timeString = now.toLocaleTimeString('en-GB', {
                     hour: '2-digit',
                     minute: '2-digit',
-                    timeZone: 'UTC'
+                    timeZone: 'America/Chicago'
                 });
                 document.getElementById('currentTime').textContent = timeString;
             }
@@ -479,10 +479,10 @@
                     return matchesSearch && matchesLeague;
                 });
 
-                // Sort events by time
+                // Sort events by converted time (UTC-6)
                 this.filteredEvents.sort((a, b) => {
-                    const timeA = a.time.split(':').map(Number);
-                    const timeB = b.time.split(':').map(Number);
+                    const timeA = this.convertTime(a.time).split(':').map(Number);
+                    const timeB = this.convertTime(b.time).split(':').map(Number);
 
                     // Compare hours first
                     if (timeA[0] !== timeB[0]) {
@@ -514,6 +514,7 @@
 
             createEventCard(event, index) {
                 const card = document.createElement('div');
+                const convertedTime = this.convertTime(event.time);
                 const isLive = this.isEventLive(event.time, this.currentDay);
                 const isExpanded = this.expandedEvents.has(index);
                 const totalChannels = event.channels.length + event.channels2.length;
@@ -524,7 +525,7 @@
                         <div class="flex-1">
                             <div class="flex items-center space-x-3 mb-3">
                                 <span class="${isLive ? 'live-badge' : 'time-badge'} text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                    ${isLive ? 'LIVE' : event.time}
+                                    ${isLive ? 'LIVE' : convertedTime}
                                 </span>
                                 <span class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
                                     ${totalChannels} channel${totalChannels !== 1 ? 's' : ''}
@@ -661,12 +662,9 @@
                 return timeDiff <= 2 && isSameDay;
             }
 
-            convertTime(time, targetTimezone) {
-                if (targetTimezone === 'GMT') return time;
-
+            convertTime(time) {
                 const [hours, minutes] = time.split(':').map(Number);
-                const offset = parseInt(targetTimezone.replace('GMT', ''));
-                let convertedHours = hours + offset; // Add offset to convert to target timezone
+                let convertedHours = hours - 6; // Convert from UTC to UTC-6
 
                 // Handle day wrapping
                 if (convertedHours < 0) {
